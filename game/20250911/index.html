@@ -293,7 +293,7 @@
           }
         }
         score += dt * 18;
-        document.getElementById('sc').textContent = score | 0;
+        document.getElementById('sc').textContent = score.toFixed(0) | 0;
         drawScene();
         requestAnimationFrame(loop);
       }
