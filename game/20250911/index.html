@@ -119,7 +119,7 @@
       let running = false,
         score = 0,
         best = Number(localStorage.getItem('bestScore') || 0);
-      document.getElementById('best').textContent = best.toFixed(0);
+      document.getElementById('best').textContent = Math.floor(score);
       const GROUND = 96,
         GRAV = 2200,
         JUMP_V = -880;
@@ -285,7 +285,7 @@
               best = score;
               localStorage.setItem('bestScore', best);
             }
-            document.getElementById('best').textContent = best;
+            document.getElementById('best').textContent = Math.floor(best);
             document.getElementById('startCard').style.display = 'none';
             document.getElementById('gameOverCard').style.display = 'block';
             document.getElementById('overlay').style.pointerEvents = 'auto';
@@ -293,7 +293,7 @@
           }
         }
         score += dt * 18;
-        document.getElementById('sc').textContent = score.toFixed(0) | 0;
+        document.getElementById('sc').textContent = Math.floor(score) | 0;
         drawScene();
         requestAnimationFrame(loop);
       }
