@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Pop Runner — カービィ風背景</title>
+  <style>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      background: #cceeff;
+      font-family: system-ui, "Noto Sans JP", sans-serif;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh
+    }
+
+    #hud {
+      position: fixed;
+      left: 8px;
+      top: 8px;
+      display: flex;
+      gap: 8px;
+      z-index: 5;
+      pointer-events: none
+    }
+
+    .pill {
+      background: #ffffffdd;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-weight: 800;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, .12)
+    }
+
+    #overlay {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      z-index: 6;
+      pointer-events: auto
+    }
+
+    .card {
+      background: #fff;
+      padding: 18px 22px;
+      border-radius: 16px;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, .2);
+      text-align: center
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #ff6ad5, #ffc85c);
+      border: none;
+      padding: 10px 16px;
+      border-radius: 999px;
+      color: #fff;
+      font-weight: 900;
+      cursor: pointer
+    }
+
+    #gameOverCard {
+      display: none
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div class="pill">SCORE: <span id="sc">0</span></div>
+    <div class="pill">BEST: <span id="best">0</span></div>
+    <div class="pill">操作: タップ / Space / ↑（二段ジャンプ）</div>
+  </div>
+
+  <div id="overlay">
+    <div class="card" id="startCard">
+      <h2>ポップ☆ランナー</h2>
+      <div style="margin-bottom:12px">タップ / Space / ↑ でジャンプ。空中で再度タップすると二段ジャンプ＋前方1回転！</div>
+      <button class="btn" id="startBtn">ゲーム開始</button>
+    </div>
+
+    <div class="card" id="gameOverCard">
+      <h2 style="color:#ff3366">GAME OVER</h2>
+      <div id="goHint">障害物に当たった！</div>
+      <button class="btn" id="retryBtn">リトライ</button>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById('game');
+      const ctx = canvas.getContext('2d');
+      let DPR = window.devicePixelRatio || 1;
+
+      function fit() {
+        canvas.width = innerWidth * DPR;
+        canvas.height = innerHeight * DPR;
+        canvas.style.width = innerWidth + 'px';
+        canvas.style.height = innerHeight + 'px';
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      }
+      addEventListener('resize', fit);
+      fit();
+      const W = () => canvas.width / DPR,
+        H = () => canvas.height / DPR;
+
+      const dog = new Image();
+      // ここをSVGファイルのパスに差し替えてください（例："nakano.svg"）
+      dog.src = "nakano.svg";
+
+      let running = false,
+        score = 0,
+        best = Number(localStorage.getItem('bestScore') || 0);
+      document.getElementById('best').textContent = best;
+      const GROUND = 96,
+        GRAV = 2200,
+        JUMP_V = -880;
+      const player = {
+        x: W() * 0.55,
+        y: H() - GROUND - 80,
+        w: 80,
+        h: 80,
+        vy: 0,
+        jumps: 0,
+        rotating: false,
+        rotStart: 0,
+        rotDur: 380,
+        angle: 0
+      };
+
+      const obstacles = [],
+        coins = [],
+        clouds = [],
+        hills = [];
+      let spawnTimer = 0,
+        coinTimer = 0,
+        last = performance.now();
+
+      function aabb(ax, ay, aw, ah, bx, by, bw, bh) {
+        return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+      }
+
+      function spawnObstacle() {
+        const type = Math.random() < 0.5 ? 'block' : 'mushroom';
+        const size = 48;
+        obstacles.push({
+          x: -60,
+          y: H() - GROUND - size,
+          w: size,
+          h: size,
+          type,
+          speed: 260 + Math.random() * 160
+        });
+      }
+
+      function spawnCoin() {
+        coins.push({
+          x: -20 - Math.random() * 200,
+          y: H() - GROUND - 140 - Math.random() * 120,
+          r: 14,
+          speed: 260
+        });
+      }
+
+      // 雲の生成
+      function initClouds() {
+        for (let i = 0; i < 6; i++) clouds.push({
+          x: Math.random() * W(),
+          y: 50 + Math.random() * 150,
+          r: 30 + Math.random() * 30,
+          speed: 20 + Math.random() * 20,
+          color: Math.random() < 0.5 ? '#fff' : '#ffe6f2'
+        });
+      }
+      initClouds();
+
+      // 丘の生成
+      function initHills() {
+        for (let i = 0; i < 4; i++) hills.push({
+          x: Math.random() * W(),
+          y: H() - GROUND - 60,
+          w: 200 + Math.random() * 200,
+          h: 80 + Math.random() * 40,
+          color: i % 2 == 0 ? '#a8f0c6' : '#bde0ff',
+          speed: 40 + Math.random() * 20
+        });
+      }
+      initHills();
+
+      function drawBlock(o) {
+        ctx.fillStyle = '#ffd966';
+        ctx.fillRect(o.x, o.y, o.w, o.h);
+        ctx.strokeStyle = '#d4a33c';
+        ctx.strokeRect(o.x, o.y, o.w, o.h);
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${Math.floor(o.w*0.6)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('?', o.x + o.w / 2, o.y + o.h / 2 + 2);
+      }
+
+      function drawMushroom(o) {
+        const r = o.w / 2;
+        ctx.fillStyle = '#ff99aa';
+        ctx.beginPath();
+        ctx.arc(o.x + r, o.y + r * 0.8, r, Math.PI, 2 * Math.PI);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(o.x + r * 0.6, o.y + r * 0.7, 5, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.fillStyle = '#ffe6b3';
+        ctx.fillRect(o.x + r * 0.4, o.y + r * 0.8, o.w * 0.4, r * 0.8);
+      }
+
+      function drawCoin(c) {
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        ctx.scale(0.6, 1);
+        const grad = ctx.createRadialGradient(0, 0, 4, 0, 0, 14);
+        grad.addColorStop(0, '#fff9d9');
+        grad.addColorStop(1, '#ffd966');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function loop(now) {
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        if (!running) {
+          requestAnimationFrame(loop);
+          return;
+        }
+        spawnTimer -= dt;
+        coinTimer -= dt;
+        if (spawnTimer <= 0) {
+          spawnTimer = 1 + Math.random() * 1.2;
+          spawnObstacle();
+        }
+        if (coinTimer <= 0) {
+          coinTimer = 1 + Math.random() * 1.5;
+          spawnCoin();
+        }
+        player.vy += GRAV * dt;
+        player.y += player.vy * dt;
+        if (player.y > H() - GROUND - player.h) {
+          player.y = H() - GROUND - player.h;
+          player.vy = 0;
+          player.jumps = 0;
+          player.rotating = false;
+          player.angle = 0;
+        }
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+          const o = obstacles[i];
+          o.x += o.speed * dt;
+          if (o.x > W() + 60) obstacles.splice(i, 1);
+        }
+        for (let i = coins.length - 1; i >= 0; i--) {
+          const c = coins[i];
+          c.x += c.speed * dt;
+          if (c.x > W() + 40) coins.splice(i, 1);
+        }
+        for (let i = coins.length - 1; i >= 0; i--) {
+          const c = coins[i];
+          if (aabb(player.x, player.y, player.w, player.h, c.x - 10, c.y - 10, 20, 20)) {
+            coins.splice(i, 1);
+            score += 100;
+          }
+        }
+        for (const o of obstacles) {
+          if (aabb(player.x, player.y, player.w, player.h, o.x, o.y, o.w, o.h)) {
+            running = false;
+            if (score > best) {
+              best = score;
+              localStorage.setItem('bestScore', best);
+            }
+            document.getElementById('best').textContent = best;
+            document.getElementById('startCard').style.display = 'none';
+            document.getElementById('gameOverCard').style.display = 'block';
+            document.getElementById('overlay').style.pointerEvents = 'auto';
+            return;
+          }
+        }
+        score += dt * 18;
+        document.getElementById('sc').textContent = score | 0;
+        drawScene();
+        requestAnimationFrame(loop);
+      }
+
+      function drawScene() {
+        ctx.clearRect(0, 0, W(), H());
+        // 背景（空）
+        ctx.fillStyle = '#cceeff';
+        ctx.fillRect(0, 0, W(), H());
+        // 丘
+        for (const hill of hills) {
+          hill.x += hill.speed * 0.016;
+          if (hill.x > W() + hill.w) hill.x = -hill.w;
+          ctx.fillStyle = hill.color;
+          ctx.beginPath();
+          ctx.ellipse(hill.x, hill.y, hill.w / 2, hill.h / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // 雲
+        for (const cl of clouds) {
+          cl.x += cl.speed * 0.016;
+          if (cl.x > W() + cl.r) cl.x = -cl.r;
+          ctx.fillStyle = cl.color;
+          ctx.beginPath();
+          ctx.arc(cl.x, cl.y, cl.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // 地面（パステルブロック）
+        const tile = 32;
+        for (let x = 0; x < W(); x += tile) {
+          ctx.fillStyle = '#ffccaa';
+          ctx.fillRect(x, H() - GROUND, tile, GROUND);
+          ctx.strokeStyle = '#e6a97d';
+          ctx.strokeRect(x, H() - GROUND, tile, GROUND);
+        }
+        // コイン
+        for (const c of coins) drawCoin(c);
+        // プレイヤー
+        ctx.save();
+        ctx.translate(player.x + player.w / 2, player.y + player.h / 2);
+        if (player.rotating) {
+          const el = Math.min(1, (performance.now() - player.rotStart) / player.rotDur);
+          player.angle = el * Math.PI * 2;
+          if (el >= 1) player.rotating = false;
+        }
+        ctx.rotate(player.angle);
+        ctx.drawImage(dog, -player.w / 2, -player.h / 2, player.w, player.h);
+        ctx.restore();
+        // 障害物
+        for (const o of obstacles) {
+          o.type === 'block' ? drawBlock(o) : drawMushroom(o);
+        }
+      }
+
+      function doJump() {
+        if (!running) return;
+        if (player.jumps === 0) {
+          player.vy = JUMP_V;
+          player.jumps = 1;
+        } else if (player.jumps === 1) {
+          player.vy = JUMP_V * 0.9;
+          player.jumps = 2;
+          player.rotating = true;
+          player.rotStart = performance.now();
+        }
+      }
+      addEventListener('keydown', e => {
+        if (e.code === 'Space' || e.code === 'ArrowUp') {
+          if (!running) startGame();
+          else doJump();
+        }
+      });
+      canvas.addEventListener('pointerdown', () => {
+        if (!running) startGame();
+        else doJump();
+      });
+      document.getElementById('startBtn').addEventListener('click', () => startGame());
+      document.getElementById('retryBtn').addEventListener('click', () => startGame());
+
+      function startGame() {
+        running = true;
+        score = 0;
+        spawnTimer = 0;
+        coinTimer = 0;
+        obstacles.length = 0;
+        coins.length = 0;
+        player.y = H() - GROUND - player.h;
+        player.vy = 0;
+        player.jumps = 0;
+        player.rotating = false;
+        player.angle = 0;
+        document.getElementById('startCard').style.display = 'none';
+        document.getElementById('gameOverCard').style.display = 'none';
+        document.getElementById('overlay').style.pointerEvents = 'none';
+        last = performance.now();
+        requestAnimationFrame(loop);
+      }
+      drawScene();
+    })();
+  </script>
+</body>
+
+</html>
