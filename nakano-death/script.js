@@ -33,10 +33,22 @@ let player;
 
 // 1. Initialize Map
 function initMap() {
+    // 手動座標指定（必要エリアのみ）
+    const manualPositions = {
+        nogata: { y: 290 },          // 野方
+        egota: { y: 238 },           // 江古田
+        matsugaoka: { y: 270 },      // 松が丘
+        numabukuro: { y: 278 },      // 沼袋
+        higashinakano: { x: 500 },   // 東中野
+        nakano: { y: 400 },          // 中野
+        honcho: { y: 490 },          // 本町
+        minamidai: { y: 585 }        // 南台
+    };
+
     // Generate paths
     areas.forEach(area => {
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        const pathData = mapPaths[area.id] || mapPaths[area.id.replace('egota', 'ekota')]; // Handle spelling diff if any
+        const pathData = mapPaths[area.id] || mapPaths[area.id.replace('egota', 'ekota')];
 
         if (pathData) {
             path.setAttribute("d", pathData);
@@ -44,12 +56,30 @@ function initMap() {
             path.setAttribute("id", area.id);
             path.addEventListener('click', () => openModal(area));
 
-            // Add Label (Center of bounding box approximation)
-            // For better centering, we could calculate centroid, but simplified here:
+            // ラベル生成
             const bbox = getApproxCenter(pathData);
             const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            text.setAttribute("x", bbox.x);
-            text.setAttribute("y", bbox.y);
+
+            let x = bbox.x;
+            let y = bbox.y;
+
+            // 手動指定がある場合は上書き
+            if (manualPositions[area.id]) {
+                if (manualPositions[area.id].x !== undefined) {
+                    x = manualPositions[area.id].x;
+                }
+                if (manualPositions[area.id].y !== undefined) {
+                    y = manualPositions[area.id].y;
+                }
+            }
+
+            text.setAttribute("x", x);
+            text.setAttribute("y", y);
+
+            // 中央基準にする（おすすめ）
+            text.setAttribute("text-anchor", "middle");
+            text.setAttribute("dominant-baseline", "middle");
+
             text.setAttribute("class", "label");
             text.textContent = area.name;
 
@@ -60,6 +90,7 @@ function initMap() {
         }
     });
 }
+
 
 // Helper to find approx center of a path string (simplified)
 function getApproxCenter(d) {
