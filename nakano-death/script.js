@@ -54,7 +54,6 @@ function initMap() {
             path.setAttribute("d", pathData);
             path.setAttribute("class", "area");
             path.setAttribute("id", area.id);
-            path.addEventListener('click', () => openModal(area));
 
             // ラベル生成
             const bbox = getApproxCenter(pathData);
@@ -75,20 +74,24 @@ function initMap() {
 
             text.setAttribute("x", x);
             text.setAttribute("y", y);
-
-            // 中央基準にする（おすすめ）
             text.setAttribute("text-anchor", "middle");
             text.setAttribute("dominant-baseline", "middle");
-
             text.setAttribute("class", "label");
             text.textContent = area.name;
 
+            // まずDOMに追加
             svgContainer.appendChild(path);
             svgContainer.appendChild(text);
+
+            // ★ 追加：path と text 両方にクリックイベント
+            path.addEventListener('click', () => openModal(area));
+            text.addEventListener('click', () => openModal(area));
+
         } else {
             console.warn(`No path data for ${area.id}`);
         }
     });
+
 }
 
 
