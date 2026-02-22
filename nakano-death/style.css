@@ -238,3 +238,29 @@ text.label.wiggle {
         font-size: 1.8rem;
     }
 }
+
+/* ===================== */
+/* Splash Screen */
+/* ===================== */
+
+#splash {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    opacity: 1;
+    transition: opacity 1s ease;
+}
+
+#splash img {
+    width: 80%;
+    max-width: 400px;
+}
+
+#splash.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}

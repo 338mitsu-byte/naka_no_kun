@@ -8,6 +8,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <div id="splash">
+        <img src="images/splash.png" alt="Splash">
+    </div>
+
     <main>
         <div class="map-container">
             <!-- SVG Map will be injected here or inline -->
@@ -42,5 +46,30 @@
     <script src="script.js"></script>
     <!-- YouTube IFrame API -->
     <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+
+            const splash = document.getElementById("splash");
+
+            // 初回アクセス判定
+            if (!localStorage.getItem("splashShown")) {
+
+                setTimeout(() => {
+                    splash.classList.add("fade-out");
+
+                    setTimeout(() => {
+                        splash.style.display = "none";
+                    }, 1000);
+
+                }, 2500); // 表示時間（ミリ秒）
+
+                localStorage.setItem("splashShown", "true");
+
+            } else {
+                splash.style.display = "none";
+            }
+        });
+</script>
+
 </body>
 </html>
