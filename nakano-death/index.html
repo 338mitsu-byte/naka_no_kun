@@ -122,19 +122,14 @@
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
     document.addEventListener("DOMContentLoaded", () => {
-
         const splash = document.getElementById("splash");
         if (!splash) return;
-
         setTimeout(() => {
             splash.classList.add("fade-out");
-
             setTimeout(() => {
                 splash.style.display = "none";
             }, 1000); // フェード時間
-
         }, 1700); // 表示時間（調整可）
-
     });
     </script>
 
