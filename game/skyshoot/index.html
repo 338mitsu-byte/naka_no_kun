@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ナカ〜ノくんスカイシュート</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="game-frame" aria-label="ナカ〜ノくんスカイシュート">
+        <canvas id="game" width="960" height="540"></canvas>
+
+        <div class="hud" aria-live="polite">
+          <div>
+            <span class="hud-label">SCORE</span>
+            <strong id="score">0</strong>
+          </div>
+          <div>
+            <span class="hud-label">LIFE</span>
+            <strong id="life">3</strong>
+          </div>
+          <div>
+            <span class="hud-label">LEVEL</span>
+            <strong id="level">1</strong>
+          </div>
+        </div>
+
+        <div class="start-panel" id="startPanel">
+          <img src="./nakano.svg" alt="" />
+          <div>
+            <p class="eyebrow">SIDE SCROLL SHOOTER</p>
+            <h1>ナカ〜ノくん<br />スカイシュート</h1>
+            <p>星あつめと連射で、左から来る相手をかわして進もう。</p>
+          </div>
+          <button id="startButton" type="button">スタート</button>
+        </div>
+
+        <div class="touch-hint" aria-hidden="true">なぞって移動 / タップでショット</div>
+      </section>
+
+      <aside class="info">
+        <h2>操作</h2>
+        <p>移動: 矢印キー / WASD / なぞる　ショット: Space / Enter / タップ</p>
+        <p>星を取ると得点アップ。左から来る相手に当たるとライフが減ります。</p>
+      </aside>
+    </main>
+
+    <script src="./game.js"></script>
+  </body>
+</html>
